@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Riya Expense App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#0b0c10; --panel:#111217; --muted:#9aa0a6; --text:#e8eaed; --brand:#4f46e5; --ok:#16a34a; --bad:#ef4444; --card:#151823;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#0b0c10,#0e1116 30%,#0b0c10);color:var(--text)}
+    a{color:#93c5fd}
+    header{max-width:1000px;margin:24px auto 8px;padding:0 16px;display:flex;align-items:center;justify-content:space-between}
+    header h1{font-size:24px;margin:0;font-weight:700;letter-spacing:.2px}
+    header .actions{display:flex;gap:8px;align-items:center}
+    .tag{font-size:12px;color:var(--muted)}
+
+    .container{max-width:1000px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+    @media (max-width: 900px){.container{grid-template-columns:1fr}}
+
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{font-size:18px;margin:0 0 12px}
+
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .row{display:flex;gap:12px}
+    label{font-size:12px;color:var(--muted)}
+    input, select, textarea, button{width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#0f1117;color:var(--text);outline:none}
+    textarea{resize:vertical;min-height:80px}
+    button{cursor:pointer;border:none;font-weight:600}
+    .btn-primary{background:var(--brand)}
+    .btn-ghost{background:transparent;border:1px dashed rgba(255,255,255,.18)}
+    .btn-danger{background:var(--bad)}
+    .btn-ok{background:var(--ok)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+
+    .kpi{display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin:12px 0}
+    .kpi .box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:12px}
+    .kpi .box h3{margin:0;font-size:12px;color:var(--muted)}
+    .kpi .box p{margin:6px 0 0;font-size:22px;font-weight:700}
+    .pos{color:#22c55e}.neg{color:#f87171}
+
+    table{width:100%;border-collapse:collapse}
+    th, td{padding:10px;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+    th{font-size:12px;color:var(--muted);text-align:left}
+    tr:last-child td{border-bottom:none}
+    .pill{padding:4px 8px;border-radius:999px;font-size:12px;background:rgba(255,255,255,.08);display:inline-block}
+
+    .footer{max-width:1000px;margin:8px auto 40px;color:var(--muted);font-size:12px;padding:0 16px}
+    .muted{color:var(--muted)}
+    .inline-actions{display:flex;gap:8px}
+    .right{margin-left:auto}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Riya Expense App</h1>
+      <div class="tag">Track income & spending • Local storage • Charts</div>
+    </div>
+    <div class="actions">
+      <button id="exportCsv" class="btn-ghost">Export CSV</button>
+      <button id="clearAll" class="btn-danger">Clear Data</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Left: Transactions & List -->
+    <section class="card">
+      <h2>Add / Edit Transaction</h2>
+      <form id="txnForm">
+        <input type="hidden" id="txnId" />
+        <div class="grid-3">
+          <div>
+            <label>Type</label>
+            <select id="type" required>
+              <option value="expense">Expense (-)</option>
+              <option value="income">Income (+)</option>
+            </select>
+          </div>
+          <div>
+            <label>Amount</label>
+            <input id="amount" type="number" step="0.01" min="0" placeholder="e.g. 499.00" required />
+          </div>
+          <div>
+            <label>Date</label>
+            <input id="date" type="date" required />
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:12px">
+          <div>
+            <label>Category</label>
+            <input id="category" list="catlist" placeholder="e.g. Food, Travel, Salary" />
+            <datalist id="catlist">
+              <option>Food</option>
+              <option>Groceries</option>
+              <option>Rent</option>
+              <option>Travel</option>
+              <option>Shopping</option>
+              <option>Health</option>
+              <option>Salary</option>
+              <option>Other</option>
+            </datalist>
+          </div>
+          <div>
+            <label>Note</label>
+            <input id="note" placeholder="optional" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-primary" type="submit" id="saveBtn">Save Transaction</button>
+          <button class="btn-ghost" type="button" id="resetBtn">Reset</button>
+        </div>
+      </form>
+
+      <div class="row" style="margin-top:18px;align-items:center">
+        <div class="grid-3" style="flex:1">
+          <div class="box kpi-item box-balance">
+            <h3>Balance</h3>
+            <p id="bal" class="pos">₹0</p>
+          </div>
+          <div class="box">
+            <h3>Total Income</h3>
+            <p id="inc" class="pos">₹0</p>
+          </div>
+          <div class="box">
+            <h3>Total Expense</h3>
+            <p id="exp" class="neg">₹0</p>
+          </div>
+        </div>
+        <div class="right">
+          <label for="monthFilter" class="muted" style="display:block;margin-bottom:6px">Filter Month</label>
+          <select id="monthFilter"></select>
+        </div>
+      </div>
+
+      <h2 style="margin-top:18px">Transactions</h2>
+      <div style="overflow:auto">
+        <table id="txnTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th class="right">Amount</th>
+              <th>Note</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Right: Charts -->
+    <aside class="card">
+      <h2>Insights</h2>
+      <div class="grid-2">
+        <div>
+          <label class="muted">Expenses by Category</label>
+          <canvas id="catChart" height="200"></canvas>
+        </div>
+        <div>
+          <label class="muted">Monthly Trend</label>
+          <canvas id="trendChart" height="200"></canvas>
+        </div>
+      </div>
+      <div style="margin-top:12px" class="toolbar">
+        <button id="demoData" class="btn-ok">Load Demo Data</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="footer">Made with ❤ by Riya. Data stays in your browser (localStorage).</div>
+
+  <script>
+    // ====== Storage & State ======
+    const KEY = 'riya-expense-app:v1';
+    let txns = [];
+
+    function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8) }
+
+    function load(){
+      try{ txns = JSON.parse(localStorage.getItem(KEY)) || [] }catch{ txns = [] }
+    }
+    function save(){ localStorage.setItem(KEY, JSON.stringify(txns)) }
+
+    // ====== Helpers ======
+    const Rs = n => '₹' + (Number(n)||0).toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:2});
+    const byMonthKey = d => new Date(d).toISOString().slice(0,7); // YYYY-MM
+
+    // ====== Form ======
+    const form = document.getElementById('txnForm');
+    const fId = document.getElementById('txnId');
+    const fType = document.getElementById('type');
+    const fAmt = document.getElementById('amount');
+    const fDate = document.getElementById('date');
+    const fCat = document.getElementById('category');
+    const fNote = document.getElementById('note');
+
+    document.getElementById('resetBtn').onclick = () => { fId.value=''; form.reset(); fDate.valueAsDate = new Date() }
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const type = fType.value;
+      const amount = Math.abs(parseFloat(fAmt.value));
+      if(!amount || amount<=0) return alert('Enter a valid amount');
+      const date = fDate.value || new Date().toISOString().slice(0,10);
+      const category = (fCat.value||'Other').trim();
+      const note = (fNote.value||'').trim();
+
+      if(fId.value){
+        const id = fId.value;
+        const i = txns.findIndex(t=>t.id===id);
+        if(i>-1) txns[i] = {...txns[i], type, amount, date, category, note};
+      }else{
+        txns.push({ id:uid(), type, amount, date, category, note });
+      }
+      save();
+      render();
+      form.reset(); fId.value=''; fDate.valueAsDate = new Date();
+    });
+
+    // ====== Table Rendering ======
+    const tbody = document.querySelector('#txnTable tbody');
+
+    function renderTable(filtered){
+      tbody.innerHTML = '';
+      if(filtered.length===0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan = 6; td.className='muted'; td.textContent='No transactions yet';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      for(const t of filtered){
+        const tr = document.createElement('tr');
+        const date = new Date(t.date).toLocaleDateString('en-IN',{year:'numeric',month:'short',day:'2-digit'});
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td><span class="pill" style="background:${t.type==='income'?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'}">${t.type}</span></td>
+          <td>${t.category||'-'}</td>
+          <td style="text-align:right">${t.type==='income'?'<span class="pos">+':''}${Rs(t.amount)}${t.type==='income'?'</span>':'<span class="neg">-</span>'}</td>
+          <td>${t.note||''}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="btn-ghost" data-act="edit" data-id="${t.id}">Edit</button>
+              <button class="btn-danger" data-act="del" data-id="${t.id}">Delete</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    tbody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const id = btn.getAttribute('data-id');
+      const act = btn.getAttribute('data-act');
+      if(act==='del'){
+        if(confirm('Delete this transaction?')){ txns = txns.filter(t=>t.id!==id); save(); render(); }
+      }else if(act==='edit'){
+        const t = txns.find(x=>x.id===id); if(!t) return;
+        fId.value = t.id; fType.value = t.type; fAmt.value = t.amount; fDate.value = t.date; fCat.value = t.category; fNote.value = t.note||'';
+        window.scrollTo({top:0, behavior:'smooth'});
+      }
+    });
+
+    // ====== Filters & KPIs ======
+    const monthSel = document.getElementById('monthFilter');
+    function uniqueMonths(){
+      const set = new Set(txns.map(t=>byMonthKey(t.date)));
+      const list = Array.from(set).sort().reverse();
+      return list;
+    }
+    function fillMonthOptions(){
+      const months = uniqueMonths();
+      const cur = byMonthKey(new Date());
+      const opts = [cur, ...months.filter(m=>m!==cur)];
+      monthSel.innerHTML = opts.map(m=>`<option value="${m}">${m}</option>`).join('');
+      if(!opts.includes(cur) && opts.length){ monthSel.value = opts[0] }
+    }
+
+    function totals(data){
+      let income=0, expense=0; for(const t of data){ if(t.type==='income') income+=t.amount; else expense+=t.amount }
+      return {income, expense, balance: income-expense}
+    }
+
+    function renderKpis(data){
+      const {income, expense, balance} = totals(data);
+      document.getElementById('inc').textContent = Rs(income);
+      document.getElementById('exp').textContent = Rs(expense);
+      const balEl = document.getElementById('bal');
+      balEl.textContent = Rs(balance);
+      balEl.classList.toggle('pos', balance>=0);
+      balEl.classList.toggle('neg', balance<0);
+    }
+
+    // ====== Charts ======
+    let catChart, trendChart;
+    function upsertCharts(data){
+      // Category chart (expenses only)
+      const catAgg = {};
+      data.filter(t=>t.type==='expense').forEach(t=>{ catAgg[t.category||'Other']=(catAgg[t.category||'Other']||0)+t.amount });
+      const labels = Object.keys(catAgg); const values = Object.values(catAgg);
+      const ctx1 = document.getElementById('catChart');
+      if(catChart) catChart.destroy();
+      catChart = new Chart(ctx1, { type:'doughnut', data:{ labels, datasets:[{ data: values }] }, options:{ plugins:{legend:{position:'bottom'}} }});
+
+      // Trend chart (monthly balance)
+      const map = new Map();
+      for(const t of txns){ const k = byMonthKey(t.date); const cur = map.get(k)||{inc:0,exp:0}; if(t.type==='income') cur.inc+=t.amount; else cur.exp+=t.amount; map.set(k, cur) }
+      const sortedKeys = Array.from(map.keys()).sort();
+      const balSeries = sortedKeys.map(k=> (map.get(k).inc - map.get(k).exp).toFixed(2) );
+      const ctx2 = document.getElementById('trendChart');
+      if(trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx2, { type:'line', data:{ labels: sortedKeys, datasets:[{ label:'Monthly Balance', data: balSeries, tension:.25, fill:false }] }, options:{ plugins:{legend:{display:false}} }});
+    }
+
+    // ====== Export ======
+    document.getElementById('exportCsv').onclick = () => {
+      if(txns.length===0) return alert('Nothing to export');
+      const header = ['id','type','amount','date','category','note'];
+      const rows = txns.map(t=> header.map(h=> String(t[h]??'').replaceAll('"','""')));
+      const csv = [header.join(','), ...rows.map(r=> r.map(v=>`"${v}"`).join(','))].join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='riya-expense-data.csv'; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('clearAll').onclick = () => {
+      if(confirm('This will delete ALL data. Continue?')){ txns=[]; save(); render(); }
+    }
+
+    // ====== Demo Data ======
+    document.getElementById('demoData').onclick = () => {
+      const today = new Date();
+      function dateShift(mo, day){ const d = new Date(today); d.setMonth(d.getMonth()-mo); if(day) d.setDate(day); return d.toISOString().slice(0,10) }
+      txns = [
+        {id:uid(), type:'income', amount:25000, date:dateShift(0,1), category:'Salary', note:'Monthly salary'},
+        {id:uid(), type:'expense', amount:4500, date:dateShift(0,2), category:'Rent', note:''},
+        {id:uid(), type:'expense', amount:1200, date:dateShift(0,3), category:'Food', note:'Cafe'},
+        {id:uid(), type:'expense', amount:800, date:dateShift(0,5), category:'Travel', note:'Metro card'},
+        {id:uid(), type:'income', amount:5000, date:dateShift(1,1), category:'Freelance', note:'Landing page'},
+        {id:uid(), type:'expense', amount:2200, date:dateShift(1,6), category:'Groceries', note:''},
+        {id:uid(), type:'expense', amount:1500, date:dateShift(1,12), category:'Shopping', note:'T-shirt'},
+        {id:uid(), type:'expense', amount:600, date:dateShift(2,10), category:'Health', note:'Medicine'}
+      ];
+      save(); render();
+    }
+
+    // ====== Render Root ======
+    function render(){
+      fillMonthOptions();
+      const month = monthSel.value || byMonthKey(new Date());
+      const filtered = txns.filter(t=> byMonthKey(t.date) === month);
+      renderTable(filtered);
+      renderKpis(filtered);
+      upsertCharts(filtered);
+    }
+
+    monthSel.addEventListener('change', render);
+
+    // Init
+    load();
+    if(!txns.length){ fDate.valueAsDate = new Date() } else { fDate.valueAsDate = new Date() }
+    render();
+  </script>
+</body>
+</html>
